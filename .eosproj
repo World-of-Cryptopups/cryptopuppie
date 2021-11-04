@@ -1,0 +1,21 @@
+{
+  "main": "src/cryptopuppie.cpp",
+  "contract": "cryptopuppie",
+  "include": "",
+  "resource": "",
+  "cdt": "vlatest",
+  "output": "",
+  "scripts": {
+    "build": ""
+  },
+  "deploy": {
+    "target": "both",
+    "mainnet": "",
+    "kylin": "",
+    "jungle": "",
+    "local": ""
+  },
+  "test": {
+    "npmClient": ""
+  }
+}
