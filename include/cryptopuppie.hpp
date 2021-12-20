@@ -1,4 +1,7 @@
+#pragma once
+
 #include <eosio/eosio.hpp>
+#include <eosio/singleton.hpp>
 
 using namespace std;
 using namespace eosio;
@@ -7,16 +10,18 @@ CONTRACT cryptopuppie : public contract {
    public:
     using contract::contract;
 
-    // SYSTEM ACTIONS
-    ACTION initgamelevel();
+    // SYSTEM ACTIONS (only set by contract)
+    ACTION initsys();
     ACTION setlevelmap(uint32_t level, string map);
     ACTION setlevelboss(uint32_t level, string boss);
 
     // USER ACTIONS
     ACTION teamreset(name player, uint64_t teamid);
     ACTION advteamreset(name player, uint64_t advent_teamid);
-    ACTION play(name player, uint32_t game_level, uint32_t team_num);
-    ACTION playattack(name player);
+    ACTION createteam(name player, uint64_t teamid, vector<uint64_t> assets);
+    ACTION removeteam(name player, uint64_t teamid, vector<uint64_t> assets);
+    ACTION play(name player, uint32_t game_level, uint32_t team_num);  // similar concept to new game?
+    ACTION playattack(name player, uint32_t game_level);
 
     // the only way for players to transfer their nft is by creating teams / staking it
     [[eosio::on_notify("atomicassets::transfer")]] void manageasset(name from, name to, vector<uint64_t> asset_ids, string memo);
@@ -30,7 +35,7 @@ CONTRACT cryptopuppie : public contract {
         uint32_t level;  // game level, start with level 1
         string map;      // this is an ipfs image hash of the level map
         string boss;     // this is an ipfs image hash of the boss
-        uint32_t sec;    // estimated time till done
+        uint16_t sec;    // estimated time till done
 
         auto primary_key() const { return (uint64_t)level; };
     };
@@ -73,15 +78,28 @@ CONTRACT cryptopuppie : public contract {
 
     /**
      * A data is stored if player will play.
+     * All game logic is stored in here and should be based.
      * This is used as basis for receiving rewards.
     */
     TABLE games_s {
         uint64_t gameid;
         name player;
+
+        uint32_t current_boss_health;
         uint32_t game_level;
         uint32_t team_num;
+
+        // date and times basis
         uint32_t end_time;
+        uint32_t last_attack_time;
         bool success;  // could be failed due to sudden browser exit
+    };
+
+    /**
+     * Contract system config.
+    */
+    TABLE sysconfig_s {
+        bool maintenance = false;  // system maintenance checking
     };
 
     typedef multi_index<name("gamelevels"), gamelevels_s> gamelevels_t;
@@ -92,11 +110,18 @@ CONTRACT cryptopuppie : public contract {
 
     typedef multi_index<name("games"), games_s> games_t;
 
+    typedef singleton<name("sysconfig"), sysconfig_s> sysconfig_t;
+
     gamelevels_t gamelevels = gamelevels_t(_self, _self.value);
     adventure_teams_t adventure_teams = adventure_teams_t(_self, _self.value);
+
+    sysconfig_t sysconfig = sysconfig_t(_self, _self.value);
 
     // scope teams by each player for easier access
     teams_t get_teams(name player) {
         return teams_t(_self, player.value);
     }
+
+    // UTIL FUNCTIONS (check utils.cpp for their function implementations)
+    void check_maintenance();
 };
